@@ -243,7 +243,7 @@ export function ProductControls({
       {children}
       <mesh
         name="ProductInteractionHitbox"
-        position={[0, 0.42, 0]}
+        position={[0, 0.62, 0]}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
         onPointerDown={onPointerDown}
@@ -251,7 +251,7 @@ export function ProductControls({
         onPointerUp={(event) => finishInteraction(event)}
         onPointerCancel={(event) => finishInteraction(event, true)}
       >
-        <boxGeometry args={[3.2, 5.75, 2.15]} />
+        <boxGeometry args={[3.3, 6.35, 2.2]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
       </mesh>
     </group>

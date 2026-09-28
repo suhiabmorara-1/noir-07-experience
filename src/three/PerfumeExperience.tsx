@@ -1,13 +1,19 @@
-import { AdaptiveDpr, ContactShadows } from '@react-three/drei'
+import { AdaptiveDpr, ContactShadows, MeshReflectorMaterial } from '@react-three/drei'
+import { MeshReflectorMaterial as MeshReflectorMaterialImpl } from '@react-three/drei/materials/MeshReflectorMaterial'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import { Suspense, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import {
   ACESFilmicToneMapping,
+  Color,
+  DoubleSide,
   FogExp2,
   Group,
   MathUtils,
+  Mesh,
+  MeshBasicMaterial,
   MeshPhysicalMaterial,
+  PlaneGeometry,
   PMREMGenerator,
   Vector3,
 } from 'three'
@@ -44,12 +50,43 @@ function StudioEnvironment() {
     const pmrem = new PMREMGenerator(gl)
     pmrem.compileEquirectangularShader()
     const room = new RoomEnvironment()
+    const cards: Mesh<PlaneGeometry, MeshBasicMaterial>[] = []
+
+    const addReflectionCard = (
+      width: number,
+      height: number,
+      position: [number, number, number],
+      color: string,
+      energy: number,
+    ) => {
+      const material = new MeshBasicMaterial({
+        color: new Color(color).multiplyScalar(energy),
+        side: DoubleSide,
+        toneMapped: false,
+      })
+      const card = new Mesh(new PlaneGeometry(width, height), material)
+      card.position.set(...position)
+      card.lookAt(0, 0.25, 0)
+      room.add(card)
+      cards.push(card)
+    }
+
+    addReflectionCard(1.05, 6.8, [-3.6, 0.7, 2.7], '#f4eee6', 2.9)
+    addReflectionCard(0.52, 6.2, [3.15, 0.75, -2.45], '#d7d9d9', 2.4)
+    addReflectionCard(3.4, 1.05, [0.35, 4.1, 1.15], '#eadbca', 2.05)
+    addReflectionCard(1.5, 2.7, [3.7, -0.7, 2.35], '#b56a3e', 0.72)
+
     const environment = pmrem.fromScene(room, 0.04).texture
     const previous = scene.environment
     scene.environment = environment
     return () => {
       scene.environment = previous
       environment.dispose()
+      cards.forEach((card) => {
+        room.remove(card)
+        card.geometry.dispose()
+        card.material.dispose()
+      })
       room.dispose()
       pmrem.dispose()
     }
@@ -67,6 +104,7 @@ function SceneRig({
 }: PerfumeExperienceProps) {
   const stage = useRef<Group>(null)
   const floorMaterial = useRef<MeshPhysicalMaterial>(null)
+  const reflectiveFloorMaterial = useRef<MeshReflectorMaterialImpl>(null)
   const { camera, scene } = useThree()
   const cameraTarget = useMemo(() => new Vector3(), [])
   const desiredCamera = useMemo(() => new Vector3(), [])
@@ -102,6 +140,15 @@ function SceneRig({
       const finalVisibility = pulse(p, 0.8, 0.96, 1.3)
       floorMaterial.current.opacity = MathUtils.damp(floorMaterial.current.opacity, 0.04 + finalVisibility * 0.82, 3, delta)
     }
+    if (reflectiveFloorMaterial.current) {
+      const finalVisibility = pulse(p, 0.8, 0.96, 1.3)
+      reflectiveFloorMaterial.current.opacity = MathUtils.damp(
+        reflectiveFloorMaterial.current.opacity,
+        0.04 + finalVisibility * 0.78,
+        3,
+        delta,
+      )
+    }
   })
 
   return (
@@ -124,23 +171,45 @@ function SceneRig({
 
       <mesh position={[0, -2.55, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[24, 24]} />
-        <meshPhysicalMaterial
-          ref={floorMaterial}
-          color="#050505"
-          metalness={0.82}
-          roughness={0.24}
-          transparent
-          opacity={0.05}
-          envMapIntensity={0.85}
-        />
+        {mobile ? (
+          <meshPhysicalMaterial
+            ref={floorMaterial}
+            color="#090807"
+            metalness={0.72}
+            roughness={0.34}
+            clearcoat={0.7}
+            clearcoatRoughness={0.26}
+            transparent
+            opacity={0.05}
+            envMapIntensity={0.9}
+          />
+        ) : (
+          <MeshReflectorMaterial
+            ref={reflectiveFloorMaterial}
+            color="#090807"
+            metalness={0.68}
+            roughness={0.58}
+            mirror={0.16}
+            mixBlur={1.15}
+            mixStrength={0.28}
+            mixContrast={1.05}
+            depthScale={0.28}
+            minDepthThreshold={0.36}
+            maxDepthThreshold={1.35}
+            blur={[320, 120]}
+            resolution={512}
+            transparent
+            opacity={0.05}
+          />
+        )}
       </mesh>
       {!mobile && (
         <ContactShadows
           position={[0, -2.5, 0]}
           scale={9}
-          opacity={0.4}
-          blur={2.6}
-          far={5}
+          opacity={0.48}
+          blur={3}
+          far={5.5}
           resolution={512}
           frames={1}
           color="#000000"
