@@ -15,7 +15,6 @@ import { pulse, range, smooth } from './math'
 
 interface PerfumeModelProps {
   progress: MutableRefObject<number>
-  mouse: MutableRefObject<{ x: number; y: number }>
   reducedMotion?: boolean
 }
 
@@ -57,7 +56,7 @@ function useLogoTexture() {
  * Procedural placeholder for the final GLB/GLTF bottle.
  * Keep this component boundary when swapping to useGLTF('/models/noir-07.glb').
  */
-export function PerfumeModel({ progress, mouse, reducedMotion = false }: PerfumeModelProps) {
+export function PerfumeModel({ progress, reducedMotion = false }: PerfumeModelProps) {
   const root = useRef<Group>(null)
   const body = useRef<Group>(null)
   const collar = useRef<Group>(null)
@@ -70,16 +69,9 @@ export function PerfumeModel({ progress, mouse, reducedMotion = false }: Perfume
     const p = progress.current
     const separation = pulse(p, 0.44, 0.515, 0.61)
     const intro = smooth(range(p, 0.005, 0.085))
-    const pointerX = reducedMotion ? 0 : mouse.current.x
-    const pointerY = reducedMotion ? 0 : mouse.current.y
 
     if (root.current) {
-      const rotationPass = smooth(range(p, 0.13, 0.32))
-      const detailPass = smooth(range(p, 0.58, 0.7))
       const idle = reducedMotion ? 0 : Math.sin(state.clock.elapsedTime * 0.34) * 0.018
-      const targetY = rotationPass * Math.PI * 1.22 + detailPass * 0.22 + pointerX * 0.055
-      root.current.rotation.y = MathUtils.damp(root.current.rotation.y, targetY, 3.1, delta)
-      root.current.rotation.x = MathUtils.damp(root.current.rotation.x, pointerY * -0.025 + idle, 3.2, delta)
       root.current.position.y = MathUtils.damp(root.current.position.y, idle * 2, 2.4, delta)
       const scale = 0.82 + intro * 0.18
       root.current.scale.setScalar(MathUtils.damp(root.current.scale.x, scale, 3.5, delta))
@@ -106,7 +98,7 @@ export function PerfumeModel({ progress, mouse, reducedMotion = false }: Perfume
   })
 
   return (
-    <group ref={root} dispose={null}>
+    <group ref={root} name="PerfumeModelParts" dispose={null}>
       <group ref={body}>
         <RoundedBox args={[2.44, 3.52, 1.18]} radius={0.2} smoothness={10} position={[0, -0.15, 0]} castShadow>
           <meshPhysicalMaterial

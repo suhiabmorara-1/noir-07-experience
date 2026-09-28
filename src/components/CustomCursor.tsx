@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
+import type { ProductInteractionState } from '../three/ProductControls'
 
-export function CustomCursor({ disabled = false }: { disabled?: boolean }) {
+interface CustomCursorProps {
+  disabled?: boolean
+  productState?: ProductInteractionState
+}
+
+export function CustomCursor({ disabled = false, productState = 'idle' }: CustomCursorProps) {
   const dotRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
 
@@ -39,11 +45,39 @@ export function CustomCursor({ disabled = false }: { disabled?: boolean }) {
     }
   }, [disabled])
 
+  useEffect(() => {
+    if (disabled || !ringRef.current || !dotRef.current) return
+    const productActive = productState !== 'idle'
+    gsap.to(ringRef.current, {
+      opacity: productActive ? 0.9 : 0.42,
+      scale: 1,
+      duration: 0.35,
+      ease: 'power3.out',
+    })
+    gsap.to(dotRef.current, {
+      opacity: productActive ? 0 : 1,
+      duration: 0.24,
+      ease: 'power2.out',
+    })
+  }, [disabled, productState])
+
   if (disabled) return null
 
   return (
-    <div className="cursor-layer" aria-hidden="true">
-      <div className="cursor-ring" ref={ringRef} />
+    <div
+      className={`cursor-layer ${productState !== 'idle' ? 'cursor-layer--product' : ''}`}
+      aria-hidden="true"
+    >
+      <div
+        className={`cursor-ring ${productState !== 'idle' ? 'cursor-ring--product' : ''} ${productState === 'dragging' ? 'cursor-ring--dragging' : ''}`}
+        ref={ringRef}
+      >
+        {productState !== 'idle' && (
+          <span className="cursor-ring__label">
+            {productState === 'dragging' ? 'حرّك' : 'اسحب'}
+          </span>
+        )}
+      </div>
       <div className="cursor-dot" ref={dotRef} />
     </div>
   )

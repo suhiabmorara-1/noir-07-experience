@@ -7,6 +7,7 @@ import { Navigation } from './components/Navigation'
 import { IntroLoader } from './components/IntroLoader'
 import { StoryPanels } from './components/StoryPanels'
 import { useMediaQuery } from './hooks/useMediaQuery'
+import type { ProductInteractionState } from './three/ProductControls'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -20,6 +21,7 @@ export default function App() {
   const progressRef = useRef(0)
   const mouseRef = useRef({ x: 0, y: 0 })
   const [loaded, setLoaded] = useState(false)
+  const [productInteraction, setProductInteraction] = useState<ProductInteractionState>('idle')
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const mobile = useMediaQuery('(max-width: 760px)')
   const coarsePointer = useMediaQuery('(pointer: coarse)')
@@ -55,15 +57,23 @@ export default function App() {
   return (
     <SmoothScroll disabled={reducedMotion}>
       <IntroLoader hidden={loaded} />
-      <CustomCursor disabled={mobile || coarsePointer || reducedMotion} />
+      <CustomCursor
+        disabled={mobile || coarsePointer || reducedMotion}
+        productState={productInteraction}
+      />
       <Navigation />
-      <main ref={journeyRef} className="story-journey">
+      <main
+        ref={journeyRef}
+        className="story-journey"
+        data-product-interaction={productInteraction}
+      >
         <Suspense fallback={<div className="experience-fallback" aria-hidden="true" />}>
           <PerfumeExperience
             progress={progressRef}
             mouse={mouseRef}
             mobile={mobile}
             reducedMotion={reducedMotion}
+            onProductInteractionChange={setProductInteraction}
           />
         </Suspense>
         <StoryPanels reducedMotion={reducedMotion} />

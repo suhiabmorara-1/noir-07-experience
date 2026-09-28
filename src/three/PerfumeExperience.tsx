@@ -15,6 +15,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { AbstractNotes } from './AbstractNotes'
 import { Lighting } from './Lighting'
 import { PerfumeModel } from './PerfumeModel'
+import { ProductControls, type ProductInteractionState } from './ProductControls'
 import { ScentParticles } from './ScentParticles'
 import { pulse, sample } from './math'
 
@@ -23,6 +24,7 @@ interface PerfumeExperienceProps {
   mouse: MutableRefObject<{ x: number; y: number }>
   mobile?: boolean
   reducedMotion?: boolean
+  onProductInteractionChange?: (state: ProductInteractionState) => void
 }
 
 const X_KEYS = [
@@ -56,7 +58,13 @@ function StudioEnvironment() {
   return null
 }
 
-function SceneRig({ progress, mouse, mobile = false, reducedMotion = false }: PerfumeExperienceProps) {
+function SceneRig({
+  progress,
+  mouse,
+  mobile = false,
+  reducedMotion = false,
+  onProductInteractionChange,
+}: PerfumeExperienceProps) {
   const stage = useRef<Group>(null)
   const floorMaterial = useRef<MeshPhysicalMaterial>(null)
   const { camera, scene } = useThree()
@@ -71,17 +79,14 @@ function SceneRig({ progress, mouse, mobile = false, reducedMotion = false }: Pe
   useFrame((_, delta) => {
     const p = progress.current
     const mobileFactor = mobile ? 0.62 : 1
-    const px = reducedMotion ? 0 : mouse.current.x * 0.08
-    const py = reducedMotion ? 0 : mouse.current.y * 0.055
 
     if (stage.current) {
       const x = sample(p, X_KEYS) * mobileFactor
       const y = sample(p, Y_KEYS)
       const scale = sample(p, SCALE_KEYS) * (mobile ? 0.78 : 1)
-      stage.current.position.x = MathUtils.damp(stage.current.position.x, x + px, 3.3, delta)
-      stage.current.position.y = MathUtils.damp(stage.current.position.y, y + py, 3.3, delta)
+      stage.current.position.x = MathUtils.damp(stage.current.position.x, x, 3.3, delta)
+      stage.current.position.y = MathUtils.damp(stage.current.position.y, y, 3.3, delta)
       stage.current.scale.setScalar(MathUtils.damp(stage.current.scale.x, scale, 3.4, delta))
-      stage.current.rotation.z = MathUtils.damp(stage.current.rotation.z, mobile ? 0 : px * -0.08, 3, delta)
     }
 
     desiredCamera.set(
@@ -106,8 +111,15 @@ function SceneRig({ progress, mouse, mobile = false, reducedMotion = false }: Pe
       <ScentParticles progress={progress} mobile={mobile} reducedMotion={reducedMotion} />
       {!mobile && <AbstractNotes progress={progress} />}
 
-      <group ref={stage}>
-        <PerfumeModel progress={progress} mouse={mouse} reducedMotion={reducedMotion} />
+      <group ref={stage} name="CinematicGroup">
+        <ProductControls
+          mouse={mouse}
+          mobile={mobile}
+          reducedMotion={reducedMotion}
+          onInteractionChange={onProductInteractionChange}
+        >
+          <PerfumeModel progress={progress} reducedMotion={reducedMotion} />
+        </ProductControls>
       </group>
 
       <mesh position={[0, -2.55, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
